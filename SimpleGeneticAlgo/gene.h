@@ -1,7 +1,7 @@
 #ifndef _GENE_H
 #define _GENE_H
 
-#include "constants.h"
+#include "utils.h"
 #include <string.h>
 #include <stdlib.h>
 

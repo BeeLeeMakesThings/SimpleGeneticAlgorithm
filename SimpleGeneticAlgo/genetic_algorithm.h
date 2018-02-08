@@ -1,6 +1,7 @@
 #ifndef _GENETIC_ALGO_H
 #define _GENETIC_ALGO_H
 
+#include <random>
 #include <vector>
 #include <algorithm>
 #include "gene.h"
@@ -20,27 +21,34 @@ class GeneticAlgorithm
 	GeneType m_overallBestGene;
 	double m_dOverallBestFitness;
 
+	std::uniform_real_distribution<double> m_random;
+	std::default_random_engine m_generator;
+
 public:
 	double m_dMutationRate;
+	double m_dCrossoverRate;
 	int m_iPopulationSize;
-	double m_dKillInvalidGeneProbability;
 	int m_iIterationCount;
 	bool m_bVerbose;
+	int m_iStatusPrintInterval;
 
 	/*
 		Constructor for the algorithm
 	*/
 	GeneticAlgorithm() :
-		m_dMutationRate(0.1),
+		m_dMutationRate(0.4),
 		m_iPopulationSize(1000),
 		m_pPopulation(0),
 		m_pCumuFitness(0),
-		m_dKillInvalidGeneProbability(0.5),
 		m_iIterationCount(0),
 		m_bVerbose(true),
-		m_dOverallBestFitness(0)
+		m_iStatusPrintInterval(100),
+		m_dOverallBestFitness(0),
+		m_random(0,1),
+		m_generator(clock())
 	{
-		srand(clock());
+		GeneType dummy;
+		m_dCrossoverRate = 3.0 / dummy.dataSizeInBits();
 	}
 
 	/*
@@ -59,10 +67,9 @@ public:
 		{
 			PopnList* pNewPop = new PopnList;
 			int geneId1, geneId2;
-			UINT bitOffset;
 			std::vector<double> *pCumuFitness = new std::vector<double>;
 
-			while(pNewPop->size() < m_iPopulationSize) {
+			while((int)pNewPop->size() < m_iPopulationSize) {
 				// choose 2 genes by roulette selection
 				chooseTwoGenes(&geneId1, &geneId2);
 
@@ -70,16 +77,15 @@ public:
 				GeneType gene1((*m_pPopulation)[geneId1]);
 				GeneType gene2((*m_pPopulation)[geneId2]);
 
-				// crossover at a random bit
-				bitOffset = randomInt() % gene1.dataSizeInBits();
-				gene1.cross(bitOffset, gene2);
+				// crossover
+				crossOver(gene1, gene2);
 
 				// mutate
 				mutateGene(gene1);
 				mutateGene(gene2);
 
 				fitness = gene1.fitness();
-				if (fitness > 0 || !shouldKillGene()) {
+				if (fitness > 0) {
 					pNewPop->push_back(gene1);
 					cumuFitness += fitness;
 					pCumuFitness->push_back(cumuFitness);
@@ -94,7 +100,7 @@ public:
 				}
 
 				fitness = gene2.fitness();
-				if (fitness > 0 || !shouldKillGene()) {
+				if (fitness > 0) {
 					pNewPop->push_back(gene2);
 					cumuFitness += fitness;
 					pCumuFitness->push_back(cumuFitness);
@@ -113,9 +119,11 @@ public:
 			delete m_pPopulation;
 			m_pPopulation = pNewPop;
 
+			// shuffle population (mingle mingle)
+			std::random_shuffle(m_pPopulation->begin(), m_pPopulation->end());
+
 			delete m_pCumuFitness;
 			m_pCumuFitness = pCumuFitness;
-
 		}
 		else
 		{
@@ -131,7 +139,7 @@ public:
 
 
 				fitness = gene.fitness();
-				if (fitness <= 0 && shouldKillGene()) {// invalid gene
+				if (fitness <= 0) {// invalid gene
 					i--; continue; // redo
 				}
 
@@ -151,13 +159,14 @@ public:
 		}
 
 		m_iIterationCount++;
-
-		if (m_bVerbose)
+		if (m_bVerbose && 
+			(m_iIterationCount % m_iStatusPrintInterval == 0 || m_iIterationCount==1))
 		{
-			printf("Iteration %d - Best fitness: %.3e\n", m_iIterationCount, bestFitness);
+			printf("Iteration %d - Best fitness: %.6e\n", m_iIterationCount, bestFitness);
 			bestGene.print();
 			printf("\n");
 		}
+		
 	}
 
 	/*
@@ -197,26 +206,6 @@ public:
 
 private:
 	/*
-		Helper method - returns a random double from 0 up to specified number.
-	*/
-	double randomDouble(double max)
-	{
-		UINT s = static_cast<UINT>(rand()) & 0xFFFF;
-		double ret = s / 65535.0 * max;
-
-		return ret;
-	}
-
-	/*
-		Helper method - returns a random unsigned integer
-	*/
-	UINT randomInt()
-	{
-		return static_cast<UINT>(rand());
-	}
-
-
-	/*
 		Returns 2 distinct indices to genes in population by roulette 
 		selection
 	*/
@@ -234,7 +223,7 @@ private:
 
 	int getFirstGeneWithCumulativeFitness(double cumuFitness)
 	{
-		for (int i = 0; i < m_pCumuFitness->size(); i++) {
+		for (UINT i = 0; i < m_pCumuFitness->size(); i++) {
 			if ((*m_pCumuFitness)[i] >= cumuFitness)
 				return i;
 		}
@@ -246,20 +235,20 @@ private:
 	*/
 	void mutateGene(GeneType& gene)
 	{
-		if (randomDouble(1) < m_dMutationRate) 
-			gene.flipBit(randomInt() % gene.dataSizeInBits());
+		if (randomDouble(1) < m_dMutationRate) {
+			int bitOffset = static_cast<int>(randomDouble(gene.dataSizeInBits()));
+			gene.flipBit(bitOffset);
+		}
 	}
 
-
 	/*
-		Helper method - determines by chance if a gene should be killed
+		Crosses two genes
 	*/
-	bool shouldKillGene()
+	void crossOver(GeneType& gene1, GeneType& gene2)
 	{
-		if (m_dKillInvalidGeneProbability == 1) return true;
-		else {
-			double x = randomDouble(1);
-			return (x < m_dKillInvalidGeneProbability);
+		for (UINT i = 0; i < gene1.dataSizeInBits(); i++) {
+			if (randomDouble(1) < m_dCrossoverRate)
+				gene1.cross(i, gene2);
 		}
 	}
 

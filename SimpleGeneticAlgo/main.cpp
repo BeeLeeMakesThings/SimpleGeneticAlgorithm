@@ -8,9 +8,9 @@
 int main(int argc, char** argv)
 {
 	srand(clock());
-	GeneticAlgorithm<Point2D_Circle> algo;
+	GeneticAlgorithm<TaskScheduling> algo;
 	
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < 1000; i++)
 		algo.step();
 
 	printf("Best fitness: %.3e\n", algo.getBestFitness());
