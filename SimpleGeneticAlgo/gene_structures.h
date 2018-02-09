@@ -24,9 +24,8 @@ double evaluateFitness(Gene<Point2D_Circle>& gene)
 	double x = gene().x;
 	double y = gene().y;
 	double dist = sqrt(x*x+y*y) - 100;
-	dist *= dist;
 
-	return exp(-dist);
+	return exp(-(dist*dist)/10000);
 }
 
 /*
@@ -34,8 +33,8 @@ double evaluateFitness(Gene<Point2D_Circle>& gene)
 */
 void randomizeGene(Gene<Point2D_Circle>& theGene)
 {
-	theGene().x = rand() % 1000;
-	theGene().y = rand() % 1000;
+	theGene().x = randomInt(1000) - 500;
+	theGene().y = randomInt(1000) - 500;
 }
 
 void printGene(Gene<Point2D_Circle>& gene)

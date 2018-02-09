@@ -4,6 +4,7 @@
 #include <random>
 #include <vector>
 #include <algorithm>
+#include <time.h>
 #include "gene.h"
 
 template<typename inner_data_type>
@@ -118,9 +119,6 @@ public:
 			// delete old population
 			delete m_pPopulation;
 			m_pPopulation = pNewPop;
-
-			// shuffle population (mingle mingle)
-			std::random_shuffle(m_pPopulation->begin(), m_pPopulation->end());
 
 			delete m_pCumuFitness;
 			m_pCumuFitness = pCumuFitness;

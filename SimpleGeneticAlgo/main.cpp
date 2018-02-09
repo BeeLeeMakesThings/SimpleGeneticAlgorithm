@@ -1,15 +1,16 @@
 #include "gene_structures.h"
 #include "genetic_algorithm.h"
 #include <stdio.h>
-#include <time.h>
+
 /*
 	Entry point
 */
 int main(int argc, char** argv)
 {
-	srand(clock());
-	GeneticAlgorithm<TaskScheduling> algo;
-	
+	GeneticAlgorithm<Point2D_Circle> algo;
+	algo.m_iStatusPrintInterval = 100;
+	algo.m_iPopulationSize = 500;
+
 	for (int i = 0; i < 1000; i++)
 		algo.step();
 
@@ -17,10 +18,4 @@ int main(int argc, char** argv)
 	algo.getBestGene().print();
 
 	return 0;
-}
-
-
-double evaluateFitness(Gene<unsigned int>& gene)
-{
-	return static_cast<double>(gene());
 }
